@@ -71,9 +71,14 @@ EXCHANGE_LINKS = {
     "aster": "https://aster.finance",
     "paradex": "https://app.paradex.trade",
     "coinglass": "https://www.coinglass.com",
+    "coinmarketcap": "https://coinmarketcap.com/charts/funding-rates/",
+    "cmc": "https://coinmarketcap.com/charts/funding-rates/",
 }
 
 
 def get_exchange_link(exchange: str) -> str:
-    key = exchange.lower().split()[0]
+    ex_lower = exchange.lower()
+    if "coinmarketcap" in ex_lower or "cmc" in ex_lower:
+        return "https://coinmarketcap.com/charts/funding-rates/"
+    key = ex_lower.split()[0]
     return EXCHANGE_LINKS.get(key, "https://www.google.com/search?q=" + exchange.replace(" ", "+"))

@@ -39,6 +39,7 @@ screen -S funding_bot
 - **Variational Omni** — публичный API
 - **Hyperliquid** — публичный API
 - **Coinglass** — нужен COINGLASS_API_KEY (v4)
+- **CoinMarketCap** — парсинг дашборда (USE_CMC=true, нужен playwright)
 - **ArbitrageScanner** — опционально ARBITRAGESCANNER_KEY
 - **Lighter** — через Coinglass или Playwright (тяжёлый fallback)
 

@@ -17,7 +17,12 @@ from rich.panel import Panel
 from config import config
 from cache import get_cache
 from database import init_db, save_spread
-from fetchers import VariationalFetcher, HyperliquidFetcher, CoinglassFetcher, ArbitrageScannerFetcher
+from fetchers import (
+    VariationalFetcher,
+    HyperliquidFetcher,
+    CoinglassFetcher,
+    CoinMarketCapFetcher,
+)
 from alerts import compute_spreads, filter_alerts_by_threshold
 from bot.handlers import (
     router,
@@ -42,17 +47,20 @@ logger.add(log_path / "errors_{time:YYYY-MM-DD}.log", level="ERROR", rotation="1
 console = Console()
 
 
-FETCHERS = [
-    VariationalFetcher(),
-    HyperliquidFetcher(),
-    CoinglassFetcher(),
-    # ArbitrageScannerFetcher(),  # 404, нужен ключ или другой endpoint
-]
+def _build_fetchers():
+    fetchers = [
+        VariationalFetcher(),
+        HyperliquidFetcher(),
+        CoinglassFetcher(),
+    ]
+    if config.use_cmc:
+        fetchers.append(CoinMarketCapFetcher())
+    return fetchers
 
 
 async def poll_funding_loop(bot) -> None:
     """Фоновый цикл: fetch каждые POLL_INTERVAL сек, проверка алертов."""
-    inject_fetchers(FETCHERS)
+    inject_fetchers(_build_fetchers())
     set_alert_threshold(config.min_spread_apr)
     cache = get_cache(ttl=60)
     last_alerted: set[tuple[str, str, str]] = set()
@@ -139,7 +147,7 @@ async def main() -> None:
     dp.include_router(router)
 
     await init_db()
-    inject_fetchers(FETCHERS)
+    inject_fetchers(_build_fetchers())
     set_alert_threshold(config.min_spread_apr)
 
     start_time = time.monotonic()

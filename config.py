@@ -22,6 +22,7 @@ class Config(BaseModel):
 
     # API keys
     coinglass_api_key: str | None = Field(default=None, alias="COINGLASS_API_KEY")
+    use_cmc: bool = Field(default=False, alias="USE_CMC")
     arbitrage_scanner_key: str | None = Field(default=None, alias="ARBITRAGESCANNER_KEY")
 
     # Thresholds
@@ -42,6 +43,7 @@ class Config(BaseModel):
             telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID") or None,
             telegram_error_chat_id=os.getenv("TELEGRAM_ERROR_CHAT_ID") or None,
             coinglass_api_key=os.getenv("COINGLASS_API_KEY") or None,
+            use_cmc=os.getenv("USE_CMC", "").lower() in ("1", "true", "yes"),
             arbitrage_scanner_key=os.getenv("ARBITRAGESCANNER_KEY") or None,
             min_spread_apr=float(os.getenv("MIN_SPREAD_APR", "300")),
             poll_interval=int(os.getenv("POLL_INTERVAL", "25")),

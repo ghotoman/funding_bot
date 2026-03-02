@@ -4,6 +4,7 @@ from .hyperliquid import HyperliquidFetcher
 from .coinglass import CoinglassFetcher
 from .arbitrage_scanner import ArbitrageScannerFetcher
 from .lighter import LighterFetcher
+from .coinmarketcap import CoinMarketCapFetcher
 
 __all__ = [
     "FundingRate",
@@ -14,4 +15,5 @@ __all__ = [
     "CoinglassFetcher",
     "ArbitrageScannerFetcher",
     "LighterFetcher",
+    "CoinMarketCapFetcher",
 ]
