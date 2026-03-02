@@ -35,6 +35,27 @@ def format_funding_table(rates: list[FundingRate], symbol_filter: str | None = N
     return "\n".join(lines).strip() + suffix if lines else "Нет данных"
 
 
+def format_coin_alert_style(rates: list[FundingRate], symbol: str, spread_alert: SpreadAlert | None) -> str:
+    """Формат одной монеты как алерт: Long/Short/Spread."""
+    sym = symbol.upper()
+    by_ex = [(r.exchange, r.apr_percent) for r in rates if r.symbol.upper() == sym]
+    if not by_ex:
+        return f"Нет данных по {sym}"
+    by_ex.sort(key=lambda x: -x[1])
+    if spread_alert:
+        return (
+            f"*{spread_alert.symbol}*\n"
+            f"📈 Long @ {spread_alert.exchange_high}: {spread_alert.apr_high:.1f}% APR\n"
+            f"📉 Short @ {spread_alert.exchange_low}: {spread_alert.apr_low:.1f}% APR\n"
+            f"💰 Spread: {spread_alert.spread_apr:.1f}%"
+        )
+    # Нет спреда (1 биржа) — просто список
+    lines = [f"*{sym}*"]
+    for ex, apr in by_ex:
+        lines.append(f"• {ex}: {apr:.1f}% APR")
+    return "\n".join(lines)
+
+
 def format_spreads_table(alerts: list[SpreadAlert], limit: int = 15, symbol_filter: str | None = None) -> str:
     """Таблица спредов. symbol_filter — только спреды по этой монете."""
     if not alerts:

@@ -17,7 +17,7 @@ from database import save_spread, init_db
 from fetchers import VariationalFetcher, HyperliquidFetcher, CoinglassFetcher
 from alerts import compute_spreads, filter_alerts_by_threshold, SpreadAlert
 from .keyboards import funding_table_buttons, alert_buttons
-from .utils import format_funding_table, format_spreads_table, truncate_msg
+from .utils import format_funding_table, format_spreads_table, format_coin_alert_style, truncate_msg
 
 router = Router()
 
@@ -124,13 +124,22 @@ async def cmd_funding(msg: Message):
     wait = await msg.answer("⏳ Загрузка...")
     rates, spreads = await fetch_all_funding(force_refresh=True)
     await wait.delete()
-    tbl = format_funding_table(rates, symbol)
-    spr_tbl = format_spreads_table(spreads, symbol_filter=symbol)
-    text = tbl + "\n\n*Спреды:*\n" + spr_tbl
+    if symbol:
+        spread = next((s for s in spreads if s.symbol == symbol), None)
+        text = format_coin_alert_style(rates, symbol, spread)
+        if spread:
+            kb = funding_table_buttons(spread.exchange_high, spread.exchange_low, symbol)
+        else:
+            by_ex = [(r.exchange, r.apr_percent) for r in rates if r.symbol.upper() == symbol]
+            ex1, ex2 = (by_ex[0][0], by_ex[-1][0]) if len(by_ex) >= 2 else (by_ex[0][0], by_ex[0][0])
+            kb = funding_table_buttons(ex1, ex2, symbol) if by_ex else None
+    else:
+        tbl = format_funding_table(rates)
+        spr_tbl = format_spreads_table(spreads)
+        text = tbl + "\n\n*Спреды:*\n" + spr_tbl
+        top = spreads[0] if spreads else None
+        kb = funding_table_buttons(top.exchange_high, top.exchange_low) if top else None
     text = truncate_msg(text)
-    # Кнопки: спред по этой монете или топ общий
-    top = next((s for s in spreads if symbol and s.symbol == symbol), spreads[0] if spreads else None)
-    kb = funding_table_buttons(top.exchange_high, top.exchange_low) if top else None
     await msg.answer(text, parse_mode="Markdown", reply_markup=kb)
 
 
@@ -209,16 +218,27 @@ async def cmd_refresh(msg: Message):
     await msg.answer("✅ Данные обновлены. Используйте /funding для просмотра.")
 
 
-@router.callback_query(F.data == "refresh_funding")
+@router.callback_query(F.data.startswith("refresh_funding"))
 async def cb_refresh(cb: CallbackQuery):
     await cb.answer()
+    symbol = cb.data.split(":", 1)[1] if ":" in cb.data else None
     with suppress(Exception):
         await cb.message.edit_text("⏳ Обновление...")
     rates, spreads = await fetch_all_funding(force_refresh=True)
-    tbl = format_funding_table(rates)
-    spr_tbl = format_spreads_table(spreads)
-    text = tbl + "\n\n*Спреды:*\n" + spr_tbl
+    if symbol:
+        spread = next((s for s in spreads if s.symbol == symbol), None)
+        text = format_coin_alert_style(rates, symbol, spread)
+        if spread:
+            kb = funding_table_buttons(spread.exchange_high, spread.exchange_low, symbol)
+        else:
+            by_ex = [(r.exchange, r.apr_percent) for r in rates if r.symbol.upper() == symbol]
+            ex1, ex2 = (by_ex[0][0], by_ex[-1][0]) if len(by_ex) >= 2 else (by_ex[0][0], by_ex[0][0])
+            kb = funding_table_buttons(ex1, ex2, symbol) if by_ex else None
+    else:
+        tbl = format_funding_table(rates)
+        spr_tbl = format_spreads_table(spreads)
+        text = tbl + "\n\n*Спреды:*\n" + spr_tbl
+        top = spreads[0] if spreads else None
+        kb = funding_table_buttons(top.exchange_high, top.exchange_low) if top else None
     text = truncate_msg(text)
-    top = spreads[0] if spreads else None
-    kb = funding_table_buttons(top.exchange_high, top.exchange_low) if top else None
     await cb.message.edit_text(text, parse_mode="Markdown", reply_markup=kb)
