@@ -120,13 +120,28 @@ sudo systemctl start funding-bot    # запустить
 sudo journalctl -u funding-bot -f   # логи в реальном времени
 ```
 
-## 8. Обновление с GitHub
+## 8. Обновление на сервере
 
+Когда вышли новые изменения в репо:
+
+**Если запускаешь через screen:**
 ```bash
 cd ~/funding_bot
 git pull
-# Перезапусти, если используешь systemd:
+# Ctrl+C чтобы остановить, затем снова:
+./run.sh
+```
+
+**Если через systemd:**
+```bash
+cd ~/funding_bot
+git pull
 sudo systemctl restart funding-bot
+```
+
+Одной строкой (systemd):
+```bash
+cd ~/funding_bot && git pull && sudo systemctl restart funding-bot
 ```
 
 ---

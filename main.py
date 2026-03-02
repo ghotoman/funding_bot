@@ -46,7 +46,7 @@ FETCHERS = [
     VariationalFetcher(),
     HyperliquidFetcher(),
     CoinglassFetcher(),
-    ArbitrageScannerFetcher(),
+    # ArbitrageScannerFetcher(),  # 404, нужен ключ или другой endpoint
 ]
 
 
@@ -99,7 +99,11 @@ async def poll_funding_loop(bot) -> None:
                             reply_markup=alert_buttons(a),
                         )
                     except Exception as e:
-                        logger.error(f"Alert send failed: {e}")
+                        err = str(e).lower()
+                        if "chat not found" in err:
+                            logger.warning("Alert: chat not found — напиши боту /start в Telegram, затем перезапусти")
+                        else:
+                            logger.error(f"Alert send failed: {e}")
 
                 # Cooldown: очищать старые ключи
                 if len(last_alerted) > 20:
@@ -142,11 +146,14 @@ async def main() -> None:
     poll_task = asyncio.create_task(poll_funding_loop(bot))
     inject_state(poll_task, start_time, start_time)
 
+    hint = ""
+    if config.telegram_chat_id:
+        hint = "\n⚠️ Алерты: напиши боту /start в Telegram (если ещё не писал)"
     console.print(
         Panel(
             "[green]Funding Rate Bot started[/green]\n"
             f"Poll interval: {config.poll_interval}s\n"
-            f"Min spread alert: {config.min_spread_apr}%",
+            f"Min spread alert: {config.min_spread_apr}%{hint}",
             title="Bot",
         )
     )
