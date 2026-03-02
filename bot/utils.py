@@ -8,7 +8,7 @@ from fetchers.base import FundingRate
 from alerts import SpreadAlert
 
 
-def format_funding_table(rates: list[FundingRate], symbol_filter: str | None = None) -> str:
+def format_funding_table(rates: list[FundingRate], symbol_filter: str | None = None, limit: int = 50) -> str:
     """Markdown-таблица по биржам для символа или всех."""
     by_sym: dict[str, list[tuple[str, float]]] = {}
     for r in rates:
@@ -19,14 +19,20 @@ def format_funding_table(rates: list[FundingRate], symbol_filter: str | None = N
             by_sym[sym] = []
         by_sym[sym].append((r.exchange, r.apr_percent))
 
+    # При "все монеты" ограничиваем, иначе 400+ символов не влезут
+    syms = sorted(by_sym.keys())
+    if not symbol_filter and len(syms) > limit:
+        syms = syms[:limit]
+
     lines: list[str] = []
-    for sym in sorted(by_sym.keys()):
+    for sym in syms:
         rows = sorted(by_sym[sym], key=lambda x: -x[1])
         tbl = tabulate(rows, headers=["Exchange", "APR %"], tablefmt="pipe")
         lines.append(f"*{sym}*")
         lines.append(f"```\n{tbl}\n```")
         lines.append("")
-    return "\n".join(lines).strip() if lines else "Нет данных"
+    suffix = f"\n_... ещё {len(by_sym) - limit} монет_" if not symbol_filter and len(by_sym) > limit else ""
+    return "\n".join(lines).strip() + suffix if lines else "Нет данных"
 
 
 def format_spreads_table(alerts: list[SpreadAlert], limit: int = 15) -> str:

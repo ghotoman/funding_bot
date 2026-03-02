@@ -14,13 +14,7 @@ from loguru import logger
 from config import config
 from cache import get_cache
 from database import save_spread, init_db
-from fetchers import (
-    VariationalFetcher,
-    HyperliquidFetcher,
-    CoinglassFetcher,
-    ArbitrageScannerFetcher,
-    LighterFetcher,
-)
+from fetchers import VariationalFetcher, HyperliquidFetcher, CoinglassFetcher
 from alerts import compute_spreads, filter_alerts_by_threshold, SpreadAlert
 from .keyboards import funding_table_buttons, alert_buttons
 from .utils import format_funding_table, format_spreads_table, truncate_msg
@@ -33,6 +27,7 @@ _poll_task: asyncio.Task | None = None
 _start_time: float = 0
 _last_update_time: float = 0
 _watchlist: set[str] = set()
+_show_all_coins: bool = True  # по умолчанию все монеты
 _alert_threshold: float = 300
 
 
@@ -53,9 +48,13 @@ def set_alert_threshold(val: float):
     _alert_threshold = val
 
 
-def get_symbols() -> list[str]:
-    symbols = list(_watchlist) if _watchlist else config.symbols
-    return symbols
+def get_symbols() -> list[str] | None:
+    """None = все монеты, без фильтра."""
+    if _show_all_coins:
+        return None
+    if _watchlist:
+        return list(_watchlist)
+    return config.symbols
 
 
 async def fetch_all_funding(force_refresh: bool = False) -> tuple[list, list]:
@@ -107,9 +106,10 @@ async def cmd_help(msg: Message):
         "*/help* — этот список\n"
         "*/funding [SYMBOL]* — таблица APR и спредов (forced refresh)\n"
         "*/status* — uptime, кол-во рынков\n"
-        "*/watchlist add SYMBOL* — добавить в watchlist\n"
+        "*/watchlist all* — все монеты\n"
+        "*/watchlist add SYMBOL* — добавить\n"
         "*/watchlist remove SYMBOL* — убрать\n"
-        "*/watchlist* — показать список\n"
+        "*/watchlist* — показать\n"
         "*/alerts 500* — порог алерта в % (default 300)\n"
         "*/refresh* — принудительное обновление данных",
         parse_mode="Markdown",
@@ -142,7 +142,7 @@ async def cmd_status(msg: Message):
         f"⏱ Uptime: {uptime_str}\n"
         f"📊 Рынков: {len(rates)}, символов: {unique_symbols}\n"
         f"📈 Спредов: {len(spreads)}\n"
-        f"👀 Watchlist: {', '.join(get_symbols()) or 'default'}\n"
+        f"👀 Watchlist: {', '.join(get_symbols()) if get_symbols() else 'все монеты'}\n"
         f"🚨 Порог алерта: {_alert_threshold}%\n"
         f"🔄 Обновлено: {int(time.monotonic() - _last_update_time)}s назад"
     )
@@ -152,16 +152,30 @@ async def cmd_status(msg: Message):
 @router.message(Command("watchlist"))
 async def cmd_watchlist(msg: Message):
     args = msg.text.split(maxsplit=2)
-    global _watchlist
+    global _watchlist, _show_all_coins
     if len(args) == 1:
-        syms = list(_watchlist) if _watchlist else config.symbols
-        await msg.answer(f"Watchlist: {', '.join(syms) or 'default'}")
+        if _show_all_coins:
+            await msg.answer("Watchlist: 🪙 *ВСЕ* монеты (без фильтра)")
+        else:
+            syms = list(_watchlist) if _watchlist else config.symbols
+            await msg.answer(f"Watchlist: {', '.join(syms) or 'default'}")
         return
     action = args[1].lower()
     symbol = args[2].strip().upper() if len(args) > 2 else ""
-    if not symbol:
-        await msg.answer("Укажите символ: /watchlist add BTC")
+    if action == "all":
+        _show_all_coins = True
+        _watchlist.clear()
+        await msg.answer("✅ Watchlist: *все* монеты")
         return
+    if action == "default":
+        _show_all_coins = False
+        _watchlist.clear()
+        await msg.answer("✅ Watchlist сброшен на default")
+        return
+    if not symbol:
+        await msg.answer("Укажите символ: /watchlist add BTC\nИли: /watchlist all — все монеты")
+        return
+    _show_all_coins = False
     if action == "add":
         _watchlist.add(symbol)
         await msg.answer(f"✅ Добавлен {symbol}")
@@ -169,7 +183,7 @@ async def cmd_watchlist(msg: Message):
         _watchlist.discard(symbol)
         await msg.answer(f"✅ Удалён {symbol}")
     else:
-        await msg.answer("Используйте add или remove")
+        await msg.answer("Используйте add, remove, all или default")
 
 
 @router.message(Command("alerts"))
