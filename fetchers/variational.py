@@ -41,13 +41,11 @@ class VariationalFetcher(FundingFetcher):
                     fr = float(fr_raw)
                 except (TypeError, ValueError):
                     continue
-                # Variational: rate может быть в % за период. Если |fr|>1 — уже в %, иначе decimal
+                # Variational: funding_rate уже в % за период (e.g. -0.837615 = -0.84% per 4h)
+                # APR % = rate_percent * periods_per_year (без *100 — rate уже в процентах)
                 interval_s = item.get("funding_interval_s") or 28800
                 periods_per_year = 365 * 24 * 3600 / max(interval_s, 3600)
-                if abs(fr) > 1:
-                    apr = (fr / 100) * periods_per_year  # уже в %
-                else:
-                    apr = fr * 100 * periods_per_year
+                apr = fr * periods_per_year
                 result.append(
                     FundingRate(
                         symbol=ticker,
