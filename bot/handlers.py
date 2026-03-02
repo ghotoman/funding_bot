@@ -104,7 +104,8 @@ async def cmd_help(msg: Message):
     await msg.answer(
         "*/start* — приветствие\n"
         "*/help* — этот список\n"
-        "*/funding [SYMBOL]* — таблица APR и спредов (forced refresh)\n"
+        "*/funding BTC* — funding одной монеты (real-time)\n"
+        "*/funding* — все монеты\n"
         "*/status* — uptime, кол-во рынков\n"
         "*/watchlist all* — все монеты\n"
         "*/watchlist add SYMBOL* — добавить\n"
@@ -124,10 +125,11 @@ async def cmd_funding(msg: Message):
     rates, spreads = await fetch_all_funding(force_refresh=True)
     await wait.delete()
     tbl = format_funding_table(rates, symbol)
-    spr_tbl = format_spreads_table(spreads)
+    spr_tbl = format_spreads_table(spreads, symbol_filter=symbol)
     text = tbl + "\n\n*Спреды:*\n" + spr_tbl
     text = truncate_msg(text)
-    top = spreads[0] if spreads else None
+    # Кнопки: спред по этой монете или топ общий
+    top = next((s for s in spreads if symbol and s.symbol == symbol), spreads[0] if spreads else None)
     kb = funding_table_buttons(top.exchange_high, top.exchange_low) if top else None
     await msg.answer(text, parse_mode="Markdown", reply_markup=kb)
 

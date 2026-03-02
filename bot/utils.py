@@ -35,10 +35,14 @@ def format_funding_table(rates: list[FundingRate], symbol_filter: str | None = N
     return "\n".join(lines).strip() + suffix if lines else "Нет данных"
 
 
-def format_spreads_table(alerts: list[SpreadAlert], limit: int = 15) -> str:
-    """Таблица спредов."""
+def format_spreads_table(alerts: list[SpreadAlert], limit: int = 15, symbol_filter: str | None = None) -> str:
+    """Таблица спредов. symbol_filter — только спреды по этой монете."""
     if not alerts:
         return "Нет значимых спредов."
+    if symbol_filter:
+        alerts = [a for a in alerts if a.symbol == symbol_filter.upper()]
+        if not alerts:
+            return f"Нет спредов по {symbol_filter}"
     rows = [
         (a.symbol, a.exchange_high, a.exchange_low, a.apr_high, a.apr_low, a.spread_apr)
         for a in alerts[:limit]
